@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brücken unter Last – MATLAB-Analyse</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f4f4; --panel:#ffffff; --panel-alt:#ececec; --border:#c8c8c8;
+    --ink:#1a1a1a; --muted:#555; --accent:#0072BD;
+    --c1:#0072BD; --c2:#D95319; --c3:#77AC30;
+    --mono:'Consolas','Menlo','Courier New',monospace;
+    --sans:'Segoe UI','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+  header.matlab-header{
+    background:linear-gradient(180deg,#fafafa,#ececec);
+    border-bottom:1px solid var(--border);padding:18px 24px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .title-block h1{margin:0;font-size:22px;font-weight:600;letter-spacing:.2px}
+  .title-block p{margin:4px 0 0;color:var(--muted);font-size:13px}
+  .badge{
+    font-family:var(--mono);font-size:11px;padding:4px 8px;border:1px solid var(--border);
+    background:#fff;border-radius:3px;color:#444;
+  }
+  .badge .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;margin-right:6px;vertical-align:middle}
+  main{padding:18px 24px 60px;max-width:1500px;margin:0 auto}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  button.mbtn{
+    font-family:var(--sans);font-size:13px;padding:7px 14px;cursor:pointer;
+    background:#fff;border:1px solid var(--border);border-radius:3px;color:#222;
+    transition:background .15s;
+  }
+  button.mbtn:hover{background:#e8f1fb;border-color:var(--accent)}
+  button.mbtn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.mbtn.primary:hover{background:#005a96}
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:3px;
+    margin-bottom:16px;
+  }
+  .panel-head{
+    background:var(--panel-alt);border-bottom:1px solid var(--border);
+    padding:8px 14px;font-size:12px;font-weight:600;color:#333;
+    font-family:var(--mono);letter-spacing:.3px;text-transform:uppercase;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-head .sub{font-weight:400;color:#666;text-transform:none;font-family:var(--sans);font-size:12px}
+  .panel-body{padding:14px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:1000px){.grid-2{grid-template-columns:1fr}.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  .kpi{
+    background:#fff;border:1px solid var(--border);border-radius:3px;padding:12px 14px;
+  }
+  .kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono)}
+  .kpi .val{font-size:20px;font-weight:600;margin-top:4px;color:var(--ink);font-family:var(--mono)}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:2px}
+  table.mtable{
+    width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;background:#fff;
+  }
+  table.mtable th,table.mtable td{
+    border:1px solid #d8d8d8;padding:5px 8px;text-align:right;
+  }
+  table.mtable th{background:#ededed;color:#333;font-weight:600;text-align:center}
+  table.mtable td:first-child,table.mtable th:first-child{text-align:center;background:#f6f6f6;color:#555;width:54px}
+  table.mtable td input{
+    width:100%;border:none;background:transparent;font-family:var(--mono);font-size:12.5px;text-align:right;color:var(--ink);
+  }
+  table.mtable td input:focus{outline:1px solid var(--accent);background:#eaf3fb}
+  .table-wrap{overflow:auto;max-height:520px;border:1px solid var(--border)}
+  .plot{width:100%;height:460px}
+  .plot-3d{width:100%;height:520px}
+  .plot-sm{width:100%;height:360px}
+  .disp{
+    background:#1e1e1e;color:#e6e6e6;font-family:var(--mono);font-size:13px;
+    padding:14px 16px;border-radius:3px;white-space:pre-wrap;line-height:1.55;
+    border:1px solid #000;
+  }
+  .disp .cmd{color:#9cdcfe}
+  .disp .str{color:#ce9178}
+  .disp .num{color:#b5cea8}
+  .disp .com{color:#6a9955}
+  .interp{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:900px){.interp{grid-template-columns:1fr}}
+  .interp .card{background:#fff;border:1px solid var(--border);border-radius:3px;padding:12px 14px}
+  .interp .card h4{margin:0 0 6px;font-size:14px;color:var(--accent)}
+  .interp .card p{margin:0;color:#333;font-size:13px}
+  .legend-dot{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:middle;border-radius:2px}
+  .formula{
+    font-family:var(--mono);background:#f8f8f8;border:1px dashed var(--border);
+    padding:8px 12px;border-radius:3px;display:inline-block;margin:4px 0;
+  }
+  footer{padding:14px 24px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;text-align:center;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<header class="matlab-header">
+  <div class="title-block">
+    <h1>Brücken unter Last – MATLAB-Analyse</h1>
+    <p>Last-Durchbiegungs-Verhalten von Balken-, Bogen- und Fachwerkbrücke</p>
+  </div>
+  <div class="badge"><span class="dot"></span>MATLAB Live Script · Simulation</div>
+</header>
+
+<main>
+
+  <div class="toolbar">
+    <button class="mbtn primary" onclick="updateAll()">▶ Analyse aktualisieren</button>
+    <button class="mbtn" onclick="resetData()">↺ Beispieldaten zurücksetzen</button>
+    <button class="mbtn" onclick="exportCSV()">⬇ CSV exportieren</button>
+    <span class="badge" style="margin-left:auto">g = 9.81 m/s²&nbsp;&nbsp;|&nbsp;&nbsp;F = m · g</span>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid-4">
+    <div class="kpi"><div class="lbl">Stärkste Brücke</div><div class="val" id="kpi-strongest">–</div><div class="sub" id="kpi-strongest-sub">max. Bruchlast</div></div>
+    <div class="kpi"><div class="lbl">Min. w bei 3000 g</div><div class="val" id="kpi-minw">–</div><div class="sub" id="kpi-minw-sub">geringste Durchbiegung</div></div>
+    <div class="kpi"><div class="lbl">Effizienzfaktor η_max</div><div class="val" id="kpi-eta">–</div><div class="sub" id="kpi-eta-sub">F_bruch / m_eigen</div></div>
+    <div class="kpi"><div class="lbl">Steifigkeit k_max</div><div class="val" id="kpi-k">–</div><div class="sub" id="kpi-k-sub">linearer Anfangsbereich</div></div>
+  </div>
+
+  <!-- Tabellen -->
+  <div class="panel">
+    <div class="panel-head">Messwerttabelle <span class="sub">editierbar · automatische Kraftberechnung</span></div>
+    <div class="panel-body">
+      <div class="formula">F [N] = m [kg] · 9.81 m/s²</div>
+      <div class="grid-2" style="margin-top:10px">
+        <div class="table-wrap">
+          <table class="mtable" id="tbl-A">
+            <thead><tr><th>#</th><th>Last [g]</th><th>Kraft [N]</th><th>w₁ Balken [mm]</th><th>w₂ Bogen [mm]</th><th>w₃ Fachwerk [mm]</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table class="mtable" id="tbl-B">
+            <thead><tr><th>#</th><th>Last [g]</th><th>Kraft [N]</th><th>w₁ Balken [mm]</th><th>w₂ Bogen [mm]</th><th>w₃ Fachwerk [mm]</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2D Plot -->
+  <div class="panel">
+    <div class="panel-head">Figure 1 – Last-Durchbiegungs-Diagramm <span class="sub">F [N] vs. w [mm]</span></div>
+    <div class="panel-body"><div id="plot2d" class="plot"></div></div>
+  </div>
+
+  <!-- 3D Plot -->
+  <div class="panel">
+    <div class="panel-head">Figure 2 – 3D-Darstellung <span class="sub">drehbar · Last × Brückentyp × Durchbiegung</span></div>
+    <div class="panel-body"><div id="plot3d" class="plot-3d"></div></div>
+  </div>
+
+  <!-- Bar charts -->
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head">Figure 3 – Vergleich max. Traglast</div>
+      <div class="panel-body"><div id="plotBar" class="plot-sm"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">Figure 4 – Effizienzfaktor η</div>
+      <div class="panel-body"><div id="plotEta" class="plot-sm"></div></div>
+    </div>
+  </div>
+
+  <!-- Effizienz-Tabelle -->
+  <div class="panel">
+    <div class="panel-head">Effizienz-Auswertung <span class="sub">η = F_bruch / m_eigen</span></div>
+    <div class="panel-body">
+      <table class="mtable" id="tbl-eta">
+        <thead><tr><th>Brückentyp</th><th>Eigengewicht [g]</th><th>Bruchlast [g]</th><th>F_bruch [N]</th><th>η [–]</th><th>k [N/mm]</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Auto-Analyse -->
+  <div class="panel">
+    <div class="panel-head">&gt;&gt; disp(auswertung) <span class="sub">automatisch erzeugte Analyse</span></div>
+    <div class="panel-body"><div class="disp" id="disp-out"></div></div>
+  </div>
+
+  <!-- Physikalische Interpretation -->
+  <div class="panel">
+    <div class="panel-head">Physikalische Interpretation</div>
+    <div class="panel-body">
+      <div class="interp">
+        <div class="card"><h4><span class="legend-dot" style="background:var(--c1)"></span>Balkenbrücke</h4>
+          <p>Die Last wirkt überwiegend als <b>Biegebelastung</b>. Der Balken muss die Kraft allein durch seine Biegesteifigkeit aufnehmen, deshalb entstehen früh große Durchbiegungen und ein vergleichsweise frühes Versagen.</p></div>
+        <div class="card"><h4><span class="legend-dot" style="background:var(--c2)"></span>Bogenbrücke</h4>
+          <p>Der Bogen leitet Lasten überwiegend als <b>Druckkräfte</b> entlang seiner Krümmung in die Auflager. Dadurch ist die Konstruktion bei vertikaler Belastung deutlich tragfähiger als der reine Balken.</p></div>
+        <div class="card"><h4><span class="legend-dot" style="background:var(--c3)"></span>Fachwerkbrücke</h4>
+          <p>Die <b>Dreiecksgeometrie</b> verteilt die Last auf Zug- und Druckstäbe. Es entstehen kaum Biegemomente, die Steifigkeit ist hoch und die Bruchlast am größten.</p></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>© MATLAB-Style Analysis · Physik Oberstufe · bruecken_matlab_analyse.html</footer>
+
+<script>
+/* ============== DATEN ============== */
+const G = 9.81;
+
+const DEFAULT = {
+  last: [0,600,900,1200,1500,1800,2100,2400,2700,3000,3300,3600,3900,4200,4500,4800,6500,6800,7100,7400,7700,8000,8300,8600,8900,9200,9500,9800,10100,10400,10700,11000,11300,11600,11900,12200],
+  w1:   [0,1.0,1.6,2.3,2.7,3.0,3.5,4.0,4.4,8.5,8.9,9.3,9.7,10.3,10.6,11.0,11.5,12.0,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN],
+  w2:   [0,1.0,3.0,3.5,4.0,5.0,5.5,6.0,7.0,7.5,8.0,9.0,9.4,9.8,10.1,10.4,10.7,10.9,11.3,11.5,11.9,12.3,12.6,12.8,13.1,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN],
+  w3:   [0,0.6,1.0,1.3,1.7,2.0,2.3,2.6,3.2,3.5,3.7,4.0,4.4,4.9,6.0,6.5,6.7,6.9,7.2,7.5,7.9,8.3,8.6,9.0,9.3,9.7,10.0,10.3,10.6,11.0,11.3,11.7,12.0,12.3,12.6,NaN],
+  bruch:[7100,9200,12200],
+  eigen:[11,13,14],
+  names:["Balkenbrücke","Bogenbrücke","Fachwerkbrücke"]
+};
+let state = clone(DEFAULT);
+
+function clone(o){return JSON.parse(JSON.stringify(o, (k,v)=> Number.isNaN(v)?"__NaN__":v), (k,v)=> v==="__NaN__"?NaN:v);}
+
+const COLORS = ['#0072BD','#D95319','#77AC30'];
+
+/* ============== TABELLE ============== */
+function renderTable(){
+  const n = state.last.length;
+  const mid = Math.ceil(n/2);
+  const bodies = [document.querySelector('#tbl-A tbody'), document.querySelector('#tbl-B tbody')];
+  bodies[0].innerHTML=''; bodies[1].innerHTML='';
+  for(let i=0;i<n;i++){
+    const tgt = i<mid ? bodies[0] : bodies[1];
+    const tr = document.createElement('tr');
+    const m_kg = state.last[i]/1000;
+    const F = (m_kg*G).toFixed(2);
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><input type="number" step="any" data-k="last" data-i="${i}" value="${state.last[i]}"></td>
+      <td>${F}</td>
+      <td><input type="number" step="any" data-k="w1" data-i="${i}" value="${fmtCell(state.w1[i])}"></td>
+      <td><input type="number" step="any" data-k="w2" data-i="${i}" value="${fmtCell(state.w2[i])}"></td>
+      <td><input type="number" step="any" data-k="w3" data-i="${i}" value="${fmtCell(state.w3[i])}"></td>`;
+    tgt.appendChild(tr);
+  }
+  document.querySelectorAll('table.mtable input').forEach(inp=>{
+    inp.addEventListener('change',e=>{
+      const k=e.target.dataset.k, i=+e.target.dataset.i;
+      const v=e.target.value;
+      state[k][i] = (v===''||v==='NaN')?NaN:parseFloat(v);
+      updateAll();
+    });
+  });
+}
+function fmtCell(v){ return (v===null||Number.isNaN(v))?'' : v; }
+
+/* ============== PLOTS ============== */
+function forcesN(){ return state.last.map(g=>+(g/1000*G).toFixed(3)); }
+
+function draw2D(){
+  const F = forcesN();
+  const mk = (y,name,c)=>({
+    x:F, y:y, name, mode:'lines+markers', type:'scatter',
+    line:{color:c,width:2}, marker:{color:c,size:6,symbol:'circle'},
+    connectgaps:false
+  });
+  const data=[mk(state.w1,'Balkenbrücke w₁',COLORS[0]),
+              mk(state.w2,'Bogenbrücke w₂',COLORS[1]),
+              mk(state.w3,'Fachwerkbrücke w₃',COLORS[2])];
+  Plotly.newPlot('plot2d',data,matlabLayout({
+    title:'Last-Durchbiegungs-Diagramm',
+    xaxis:{title:'Last F [N]'}, yaxis:{title:'Durchbiegung w [mm]'}
+  }),plotCfg());
+}
+
+function draw3D(){
+  const F = forcesN();
+  const series = [state.w1,state.w2,state.w3];
+  const traces = series.map((w,i)=>({
+    type:'scatter3d', mode:'lines+markers',
+    x:F, y:F.map(()=>i), z:w, name:state.names[i],
+    line:{color:COLORS[i],width:5}, marker:{size:3,color:COLORS[i]},
+    connectgaps:false
+  }));
+  Plotly.newPlot('plot3d',traces,matlabLayout({
+    title:'3D – Last × Brückentyp × Durchbiegung',
+    scene:{
+      xaxis:{title:'Last F [N]',gridcolor:'#cfcfcf',backgroundcolor:'#fff',showbackground:true,zerolinecolor:'#888'},
+      yaxis:{title:'Brückentyp',tickvals:[0,1,2],ticktext:state.names,gridcolor:'#cfcfcf',backgroundcolor:'#fff',showbackground:true},
+      zaxis:{title:'Durchbiegung w [mm]',gridcolor:'#cfcfcf',backgroundcolor:'#fff',showbackground:true,zerolinecolor:'#888'},
+      camera:{eye:{x:1.6,y:-1.6,z:0.9}}
+    }
+  }),plotCfg());
+}
+
+function drawBar(){
+  Plotly.newPlot('plotBar',[{
+    type:'bar', x:state.names, y:state.bruch,
+    marker:{color:COLORS,line:{color:'#222',width:1}},
+    text:state.bruch.map(v=>v+' g'), textposition:'outside'
+  }],matlabLayout({
+    title:'Vergleich der maximalen Traglast',
+    xaxis:{title:'Brückentyp'}, yaxis:{title:'Bruchlast [g]'}
+  }),plotCfg());
+}
+
+function drawEta(){
+  const eta = state.bruch.map((b,i)=>+(b/state.eigen[i]).toFixed(1));
+  Plotly.newPlot('plotEta',[{
+    type:'bar', x:state.names, y:eta,
+    marker:{color:COLORS,line:{color:'#222',width:1}},
+    text:eta.map(v=>v.toFixed(1)), textposition:'outside'
+  }],matlabLayout({
+    title:'Effizienzfaktor η = F_bruch / m_eigen',
+    xaxis:{title:'Brückentyp'}, yaxis:{title:'η [–]'}
+  }),plotCfg());
+}
+
+function matlabLayout(extra){
+  const base={
+    paper_bgcolor:'#ffffff', plot_bgcolor:'#ffffff',
+    font:{family:'Segoe UI, Helvetica, Arial',size:12,color:'#1a1a1a'},
+    margin:{l:60,r:30,t:50,b:55},
+    xaxis:{gridcolor:'#d0d0d0',zerolinecolor:'#888',linecolor:'#222',ticks:'outside',tickcolor:'#222',mirror:true,showline:true},
+    yaxis:{gridcolor:'#d0d0d0',zerolinecolor:'#888',linecolor:'#222',ticks:'outside',tickcolor:'#222',mirror:true,showline:true},
+    legend:{x:1,xanchor:'right',y:1,bgcolor:'rgba(255,255,255,0.85)',bordercolor:'#aaa',borderwidth:1},
+    title:{font:{size:14,color:'#222'}}
+  };
+  return Object.assign({},base,extra,{
+    xaxis:Object.assign({},base.xaxis,extra.xaxis||{}),
+    yaxis:Object.assign({},base.yaxis,extra.yaxis||{})
+  });
+}
+function plotCfg(){return{responsive:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d']};}
+
+/* ============== KENNWERTE ============== */
+function stiffness(w){
+  // linear region: take first ~6 valid non-zero points
+  const F = forcesN();
+  let sx=0,sy=0,n=0;
+  for(let i=1;i<F.length && n<6;i++){
+    if(!Number.isNaN(w[i]) && w[i]>0){
+      sx += w[i]*w[i];
+      sy += F[i]*w[i];
+      n++;
+    }
+  }
+  return sx>0 ? sy/sx : NaN; // N/mm
+}
+
+function lastValidW(w){
+  for(let i=w.length-1;i>=0;i--) if(!Number.isNaN(w[i])) return {i, v:w[i]};
+  return {i:-1,v:NaN};
+}
+
+function wAt(w, targetG){
+  // find w at last == targetG, else linear interpolate
+  const L = state.last;
+  for(let i=0;i<L.length;i++){
+    if(L[i]===targetG) return w[i];
+    if(L[i]>targetG && i>0){
+      const a=w[i-1], b=w[i];
+      if(Number.isNaN(a)||Number.isNaN(b)) return NaN;
+      const t=(targetG-L[i-1])/(L[i]-L[i-1]);
+      return a+t*(b-a);
+    }
+  }
+  return NaN;
+}
+
+function updateKPIs(){
+  const ws = [state.w1,state.w2,state.w3];
+  const ks = ws.map(stiffness);
+  const etas = state.bruch.map((b,i)=>b/state.eigen[i]);
+
+  const iStrong = state.bruch.indexOf(Math.max(...state.bruch));
+  document.getElementById('kpi-strongest').textContent = state.names[iStrong];
+  document.getElementById('kpi-strongest-sub').textContent = state.bruch[iStrong]+' g Bruchlast';
+
+  const w3000 = ws.map(w=>wAt(w,3000));
+  const valid = w3000.map((v,i)=>({v,i})).filter(o=>!Number.isNaN(o.v));
+  if(valid.length){
+    const min = valid.reduce((a,b)=>a.v<b.v?a:b);
+    document.getElementById('kpi-minw').textContent = min.v.toFixed(2)+' mm';
+    document.getElementById('kpi-minw-sub').textContent = state.names[min.i];
+  }
+
+  const iEta = etas.indexOf(Math.max(...etas));
+  document.getElementById('kpi-eta').textContent = etas[iEta].toFixed(1);
+  document.getElementById('kpi-eta-sub').textContent = state.names[iEta];
+
+  const iK = ks.indexOf(Math.max(...ks.filter(v=>!Number.isNaN(v))));
+  document.getElementById('kpi-k').textContent = ks[iK].toFixed(2)+' N/mm';
+  document.getElementById('kpi-k-sub').textContent = state.names[iK];
+
+  // Effizienz-Tabelle
+  const tb = document.querySelector('#tbl-eta tbody');
+  tb.innerHTML='';
+  state.names.forEach((n,i)=>{
+    const FN = (state.bruch[i]/1000*G).toFixed(2);
+    const eta = etas[i].toFixed(1);
+    const k = Number.isNaN(ks[i])?'–':ks[i].toFixed(2);
+    tb.innerHTML += `<tr><td style="text-align:left">${n}</td><td>${state.eigen[i]}</td><td>${state.bruch[i]}</td><td>${FN}</td><td>${eta}</td><td>${k}</td></tr>`;
+  });
+}
+
+/* ============== AUTO-ANALYSE ============== */
+function autoAnalyse(){
+  const ws=[state.w1,state.w2,state.w3];
+  const breaks = ws.map(w=>{
+    const last = lastValidW(w);
+    return last.i>=0 ? state.last[last.i] : NaN;
+  });
+  const order = state.names.map((n,i)=>({n,b:state.bruch[i],i})).sort((a,b)=>a.b-b.b);
+  const w3000 = ws.map(w=>wAt(w,3000));
+  const etas = state.bruch.map((b,i)=>b/state.eigen[i]);
+  const iStrong = state.bruch.indexOf(Math.max(...state.bruch));
+  const iWeak   = state.bruch.indexOf(Math.min(...state.bruch));
+  const iEta    = etas.indexOf(Math.max(...etas));
+
+  const fmt = v => Number.isNaN(v)?'NaN':v.toFixed(2);
+
+  const txt =
+`<span class="com">% === Auswertung Brücken unter Last ===</span>
+<span class="cmd">&gt;&gt;</span> auswertung
+
+Reihenfolge des Versagens (aufsteigend):
+  1) ${order[0].n}   F_bruch = <span class="num">${order[0].b}</span> g
+  2) ${order[1].n}   F_bruch = <span class="num">${order[1].b}</span> g
+  3) ${order[2].n}   F_bruch = <span class="num">${order[2].b}</span> g
+
+Durchbiegung bei 3000 g:
+  w(Balken)    = <span class="num">${fmt(w3000[0])}</span> mm
+  w(Bogen)     = <span class="num">${fmt(w3000[1])}</span> mm
+  w(Fachwerk)  = <span class="num">${fmt(w3000[2])}</span> mm
+
+Effizienzfaktor η = F_bruch / m_eigen:
+  η(Balken)    = <span class="num">${etas[0].toFixed(1)}</span>
+  η(Bogen)     = <span class="num">${etas[1].toFixed(1)}</span>
+  η(Fachwerk)  = <span class="num">${etas[2].toFixed(1)}</span>
+
+<span class="com">% --- Interpretation ---</span>
+Die ${order[0].n} versagt zuerst bei etwa <span class="num">${order[0].b}</span> g und
+zeigt das nachgiebigste Verhalten. Die ${order[1].n} bleibt bei dieser
+Last noch stabil und erreicht eine Bruchlast von ungefähr <span class="num">${order[1].b}</span> g.
+Die ${order[2].n} weist die geringste Durchbiegung auf und versagt
+erst bei rund <span class="num">${order[2].b}</span> g – sie besitzt damit die höchste
+Tragfähigkeit im Versuch. Den besten Effizienzfaktor erreicht die
+${state.names[iEta]} mit η = <span class="num">${etas[iEta].toFixed(1)}</span>.
+
+<span class="cmd">&gt;&gt;</span>`;
+  document.getElementById('disp-out').innerHTML = txt;
+}
+
+/* ============== ACTIONS ============== */
+function updateAll(){
+  // re-render only Kraft column without rebuilding inputs to keep focus
+  document.querySelectorAll('#tbl-A tbody tr, #tbl-B tbody tr').forEach((tr,idx)=>{
+    const F=(state.last[idx]/1000*G).toFixed(2);
+    tr.children[2].textContent = F;
+  });
+  draw2D(); draw3D(); drawBar(); drawEta();
+  updateKPIs(); autoAnalyse();
+}
+function resetData(){ state = clone(DEFAULT); renderTable(); updateAll(); }
+function exportCSV(){
+  let csv='Last_g;Kraft_N;w1_Balken_mm;w2_Bogen_mm;w3_Fachwerk_mm\n';
+  state.last.forEach((L,i)=>{
+    const F=(L/1000*G).toFixed(3);
+    const s=v=>Number.isNaN(v)?'NaN':String(v).replace('.',',');
+    csv += `${L};${F.replace('.',',')};${s(state.w1[i])};${s(state.w2[i])};${s(state.w3[i])}\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='bruecken_messwerte.csv'; a.click();
+}
+
+/* ============== INIT ============== */
+renderTable();
+updateAll();
+window.addEventListener('resize',()=>{ ['plot2d','plot3d','plotBar','plotEta'].forEach(id=>Plotly.Plots.resize(id)); });
+</script>
+</body>
+</html>
